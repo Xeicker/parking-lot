@@ -13,6 +13,7 @@ app = Flask(__name__)
 api = Api(app)
 api.add_resource(Resources.CarList,"/list")
 api.add_resource(Resources.CarAdd,"/carAdd")
+api.add_resource(Resources.CarRemove,"/carRemove")
 @app.teardown_appcontext
 def teardown_db(exception):
     db = getattr(g, '_database', None)
@@ -21,17 +22,9 @@ def teardown_db(exception):
 @app.route('/')
 
 def hello():
-    """Return a friendly HTTP greeting."""
-    message = "It's running from linux!"
-
-    """Get Cloud Run environment variables."""
-    service = os.environ.get('K_SERVICE', 'Unknown service')
-    revision = os.environ.get('K_REVISION', 'Unknown revision')
-
-    return render_template('index.html',
-        message=message,
-        Service=service,
-        Revision=revision)
+    with open("README.md","r") as f:
+        text = f.read().replace("\n","<br>")
+    return text
 
 if __name__ == '__main__':
     server_port = os.environ.get('PORT', '8080')
