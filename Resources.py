@@ -8,26 +8,24 @@ from webargs import fields
 from datetime import  datetime
 
 class CarList(Resource):
+    car_add_args = {"car": fields.Str(), "tariff": fields.Str()}
     def get(self):
         shelf = get_db()
         cars = []
         for key in shelf.keys():
             cars.append(shelf[key])
         return {'message': 'Success', 'data': [x for x in cars if isinstance(x,dict)]}, 200
-class CarAdd(Resource):
-    car_args = {"car": fields.Str(), "tariff": fields.Str()}
-    def get(self):
+    def post(self):
         self.shelf = get_db()
-        args = parser.parse(self.car_args,request,location="query")
-        print(args)
-        message = self.validateRequestArguments(args)
+        args = parser.parse(self.car_add_args,request,location="json")
+        message = self.validatePostRequestArguments(args)
         if message:
             return {"message" : message} , 400
         car = self.buildCar(args)
         self.shelf[args["car"]] = car
         self.shelf[str(self.spot)] = args["car"]
         return {'message': 'Success', "data": car}, 201
-    def validateRequestArguments(self,args):
+    def validatePostRequestArguments(self,args):
         if "car" not in args or "tariff" not in args:
             return "Missing arguments on the request"
         elif len(args["car"])==0 or args["car"].isdigit() or args["tariff"] not in tariffs:
@@ -50,12 +48,10 @@ class CarAdd(Resource):
             if str(i) not in self.shelf.keys():
                 return i
         return -1
-class CarRemove(Resource):
-    car_args = {"car": fields.Str(), "location": fields.Str()}
-    def get(self):
+class Car(Resource):
+    def delete(self,identifier):
         self.shelf = get_db()
-        args = parser.parse(self.car_args,request,location="query")
-        message = self.validateRequestArguments(args)
+        message = self.validateDeleteRequestArguments(identifier)
         if message:
             return {"message" : message} , 400
         fromd = datetime.fromisoformat(self.shelf[self.car]["start"])
@@ -66,20 +62,24 @@ class CarRemove(Resource):
         del self.shelf[self.car]
         del self.shelf[self.location]
         return {"message" : "Success","fee":fee,"car": carobj},200
-    def validateRequestArguments(self,args):
-        if "car" not in args and "location" not in args:
-            return "Missing arguments"
-        elif "car" in args:
-            if args["car"] not in self.shelf.keys():
+    def validateDeleteRequestArguments(self,identifier):
+        if len(identifier)==0:
+            return "Missing identifier"
+        #if identifier is not parseable to integer then it is taken as car ID
+        elif not identifier.isdigit():
+            if identifier not in self.shelf.keys():
                 return "Car not found"
-        elif "location" in args:
-            if not args["location"].isdigit():
-                return "Invalid arguments"
-            elif int(args["location"])>=numberofSpots:
+            self.car = identifier
+            self.location = self.shelf[identifier]["location"]
+        #if parseable to integer it is taken as parking spot number
+        else:
+            if int(identifier)>=numberofSpots:
                 return "Invalid location"
-            elif args["location"] not in self.shelf.keys():
+            elif identifier not in self.shelf.keys():
                 return "Location was free"
-
-        self.car = args["car"] if "car" in args else self.shelf[args["location"]]
-        self.location = args["location"] if "location" in args else self.shelf[args["car"]]["location"]
+            self.car = self.shelf[identifier]
+            self.location = identifier 
         return ""
+    
+    
+    

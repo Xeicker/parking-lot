@@ -11,9 +11,8 @@ import Resources
 app = Flask(__name__)
 
 api = Api(app)
-api.add_resource(Resources.CarList,"/list")
-api.add_resource(Resources.CarAdd,"/carAdd")
-api.add_resource(Resources.CarRemove,"/carRemove")
+api.add_resource(Resources.CarList,"/cars")
+api.add_resource(Resources.Car,"/cars/<string:identifier>")
 @app.teardown_appcontext
 def teardown_db(exception):
     db = getattr(g, '_database', None)
