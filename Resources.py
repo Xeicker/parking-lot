@@ -2,10 +2,11 @@ from shelve import Shelf
 from flask_restful import Resource
 from Shelves import get_db
 from flask import request
-from ParkinLotManager import tariffs,numberofSpots
+from ParkinLotManager import tariffs,numberofSpots,calculateFee
 from webargs.flaskparser import parser
 from webargs import fields
 from datetime import  datetime
+
 class CarList(Resource):
     def get(self):
         shelf = get_db()
@@ -57,9 +58,14 @@ class CarRemove(Resource):
         message = self.validateRequestArguments(args)
         if message:
             return {"message" : message} , 400
+        fromd = datetime.fromisoformat(self.shelf[self.car]["start"])
+        tod = datetime.now()
+        fee = calculateFee(fromd,tod,self.shelf[self.car]["tariff"])
+        carobj = self.shelf[self.car]
+        carobj["finish"] = tod.isoformat()
         del self.shelf[self.car]
         del self.shelf[self.location]
-        return {"message" : "Success"},200
+        return {"message" : "Success","fee":fee,"car": carobj},200
     def validateRequestArguments(self,args):
         if "car" not in args and "location" not in args:
             return "Missing arguments"
