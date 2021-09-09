@@ -1,58 +1,48 @@
-# Cloud Run Hello World with Cloud Code
+# Cloud Run API based on "Hello World with Cloud Code"
 
-"Hello World" is a [Cloud Run](https://cloud.google.com/run/docs) application that renders a simple webpage.
+his is a REST API that manages a parking lot, has three different actions
+ 
+# Add
+Which is accessible through http://host:port/cars  using a POST request with a JSON body as follows:
+	{
+		"car":<carID>
+		"tariff":<tariff>
+	}
+<carID> must be non-parseable to an integer. And <tariff>, by now, needs to be either "hourly" or "daily"
+This method creates a car and saves it to a persistent dictionary, and returns a JSON with the format:
+	{
+		"message" : ("Success" | <errorMessage>)
+		<if No Error>"data" : <car>
+	}
+	where a car is represented as:
+	{
+		"car" : <carid>
+		"tariff": <tariff>
+		"location": <parkingSpot[0-N]>
+		"start": <startDateTime>
+	}
+Possible error messages are:
+	Missing arguments on the request: either carID or tariff parameters are missing
+	Invalid arguments on the request: if <carID> length is zero, or is parseable to integer; or if <tariff> is not recognized
+        This car id has already been registered: self-explanatory
+        Parking lot is full: self-explanatory
+# List
+Which is accessible through http://host:port/cars using a GET request. This method returns a JSON file cointaining all cars in the parking lot with the format:
+	{
+		"message" : "Success",
+		"data" :[
+			{<car1>},{<car2>}...
+		]
+	}
+# Remove
 
-For details on how to use this sample as a template in Cloud Code, read the documentation for Cloud Code for [VS Code](https://cloud.google.com/code/docs/vscode/quickstart-cloud-run?utm_source=ext&utm_medium=partner&utm_campaign=CDR_kri_gcp_cloudcodereadmes_012521&utm_content=-) or [IntelliJ](https://cloud.google.com/code/docs/intellij/quickstart-cloud-run?utm_source=ext&utm_medium=partner&utm_campaign=CDR_kri_gcp_cloudcodereadmes_012521&utm_content=-).
-
-### Table of Contents
-* [Getting Started with VS Code](#getting-started-with-vs-code)
-* [Getting Started with IntelliJ](#getting-started-with-intellij)
-* [Sign up for User Research](#sign-up-for-user-research)
-
----
-## Getting Started with VS Code
-
-### Run the app locally with the Cloud Run Emulator
-1. Click on the Cloud Code status bar and select 'Run on Cloud Run Emulator'.  
-![image](./img/status-bar.png)
-
-2. Use the Cloud Run Emulator dialog to specify your [builder option](https://cloud.google.com/code/docs/vscode/deploying-a-cloud-run-app#deploying_a_cloud_run_service). Cloud Code supports Docker, Jib, and Buildpacks. See the skaffold documentation on [builders](https://skaffold.dev/docs/pipeline-stages/builders/) for more information about build artifact types.  
-![image](./img/build-config.png)
-
-3. Click ‘Run’. Cloud Code begins building your image.
-
-4. View the build progress in the OUTPUT window. Once the build has finished, click on the URL in the OUTPUT window to view your live application.  
-![image](./img/cloud-run-url.png)
-
-5. To stop the application, click the stop icon on the Debug Toolbar.
-
----
-## Getting Started with IntelliJ
-
-### Run the app locally with the Cloud Run Emulator
-
-#### Define run configuration
-
-1. Click the Run/Debug configurations dropdown on the top taskbar and select 'Edit Configurations'.  
-![image](./img/edit-config.png)
-
-2. Select 'Cloud Run: Run Locally' and specify your [builder option](https://cloud.google.com/code/docs/intellij/developing-a-cloud-run-app#defining_your_run_configuration). Cloud Code supports Docker, Jib, and Buildpacks. See the skaffold documentation on [builders](https://skaffold.dev/docs/pipeline-stages/builders/) for more information about build artifact types.  
-![image](./img/local-build-config.png)
-
-#### Run the application
-1. Click the Run/Debug configurations dropdown and select 'Cloud Run: Run Locally'. Click the run icon.  
-![image](./img/config-run-locally.png)
-
-2. View the build process in the output window. Once the build has finished, you will receive a notification from the Event Log. Click 'View' to access the local URLs for your deployed services.  
-![image](./img/local-success.png)
-
----
-## Sign up for User Research
-
-We want to hear your feedback!
-
-The Cloud Code team is inviting our user community to sign-up to participate in Google User Experience Research. 
-
-If you’re invited to join a study, you may try out a new product or tell us what you think about the products you use every day. At this time, Google is only sending invitations for upcoming remote studies. Once a study is complete, you’ll receive a token of thanks for your participation such as a gift card or some Google swag. 
-
-[Sign up using this link](https://google.qualtrics.com/jfe/form/SV_4Me7SiMewdvVYhL?reserved=1&utm_source=In-product&Q_Language=en&utm_medium=own_prd&utm_campaign=Q1&productTag=clou&campaignDate=January2021&referral_code=UXbT481079) and answer a few questions about yourself, as this will help our research team match you to studies that are a great fit.
+Which is accessible through http://host:port/cars/<identifier> using a DELETE request. The identifier is taken as <location> if it is an integer or as <carID> otherwise. This method removes from the persistent dictionary the car with that represent <identifier> and returns a JSON with the format:
+	{
+		"message" : ("Success" | <errorMessage>),
+                "Fee" : <fee>,
+		"car": <just removed car with finish parking time added>
+	} 
+Possible error messages:
+	Car not found: a car with given <carID> hasn't been registered.
+	Invalid location: <location> given is greater than parking lot spots number
+	Location was free: no car was on <location>
