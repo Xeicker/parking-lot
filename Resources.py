@@ -1,7 +1,7 @@
 from flask_restful import Resource
 from Shelves import get_db
 from flask import request
-from ParkinLotManager import tariffs, number_of_spots, calculate_fee
+from ParkinLotManager import ParkingLotManager
 from webargs.flaskparser import parser
 from webargs import fields
 from datetime import datetime
@@ -11,6 +11,9 @@ import logging
 class CarList(Resource):
     car_add_args = {"car": fields.Str(), "tariff": fields.Str()}
     logger = logging.getLogger("CarList")
+
+    def __init__(self):
+        self.parking_lot_manager = ParkingLotManager()
 
     # GET request
     def get(self):
@@ -67,8 +70,9 @@ class CarList(Resource):
         # Correct format arguments
         if len(args["car"]) == 0 or args["car"].isdigit():
             msg.append("car argument must be a non integer non empty string")
-        if args["tariff"] not in tariffs:
-            msg.append("tariff has to be one of: " + ",".join(tariffs))
+        if args["tariff"] not in self.parking_lot_manager.tariffs:
+            msg.append("tariff has to be one of: " +
+                       ",".join(self.parking_lot_manager.tariffs))
         if msg:
             return " and ".join(msg).capitalize()
 
@@ -92,13 +96,16 @@ class CarList(Resource):
 
     def _get_spot(self):
         # Find first available parking spot
-        for i in range(1, number_of_spots+1):
+        for i in range(1, self.parking_lot_manager.parking_spots+1):
             if str(i) not in self.shelf.keys():
                 return i
         return -1
 
 
 class Car(Resource):
+    def __init__(self):
+        self.parking_lot_manager = ParkingLotManager()
+
     # DELETE request
     def delete(self, identifier):
         self.shelf = get_db()
@@ -112,7 +119,8 @@ class Car(Resource):
         carobj = self.shelf[self.car]
         fromd = datetime.strptime(carobj["start"], "%Y-%m-%d %H:%M:%S")
         tod = datetime.now()
-        fee = calculate_fee(fromd, tod, carobj["tariff"])
+        fee = self.parking_lot_manager.calculate_fee(
+            fromd, tod, carobj["tariff"])
 
         # Extend car info
         carobj["finish"] = tod.strftime("%Y-%m-%d %H:%M:%S")
@@ -137,7 +145,7 @@ class Car(Resource):
             self.location = self.shelf[identifier]["location"]
         # if parseable to integer it is taken as parking spot number
         else:
-            if int(identifier) >= number_of_spots:
+            if int(identifier) >= self.parking_lot_manager.parking_spots:
                 return "Invalid location"
             elif identifier not in self.shelf.keys():
                 return "Location was free"
