@@ -3,3 +3,4 @@
 *.pyc
 *.db
 /__pycache__
+*.log
