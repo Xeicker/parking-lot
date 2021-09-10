@@ -5,10 +5,12 @@ from ParkinLotManager import tariffs, number_of_spots, calculate_fee
 from webargs.flaskparser import parser
 from webargs import fields
 from datetime import datetime
+import logging
 
 
 class CarList(Resource):
     car_add_args = {"car": fields.Str(), "tariff": fields.Str()}
+    logger = logging.getLogger("CarList")
 
     # GET request
     def get(self):
@@ -29,14 +31,16 @@ class CarList(Resource):
 
         # Read arguments from the body of the request and validate them
         args = parser.parse(self.car_add_args, request, location="json")
-        message = self.validate_add_request_arguments(args)
+        message = self._validate_add_request_arguments(args)
 
         # If any error fail the request
         if message:
+            self.logger.info("Bad request with args: " + str(args) +
+                             "; \nError message: " + message)
             return {"status": "fail", "message": message}, 400
 
         # Generate car info
-        car = self.build_car(args)
+        car = self._build_car(args)
 
         # Save car to db
         self.shelf[args["car"]] = car
@@ -73,7 +77,7 @@ class CarList(Resource):
             return "This car id has already been registered"
 
         # Validate parking lot spot availability
-        self.spot = self.get_spot()
+        self.spot = self._get_spot()
         if self.spot < 0:
             return "Parking lot is full"
         return ""
@@ -98,7 +102,7 @@ class Car(Resource):
     # DELETE request
     def delete(self, identifier):
         self.shelf = get_db()
-        message = self.validate_delete_request_arguments(identifier)
+        message = self._validate_delete_request_arguments(identifier)
 
         # Fail request if any error on identifier
         if message:
