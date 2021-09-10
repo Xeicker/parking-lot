@@ -14,24 +14,43 @@ class CarList(Resource):
         cars = []
         for key in shelf.keys():
             cars.append(shelf[key])
-        return {'message': 'Success', 'data': [x for x in cars if isinstance(x,dict)]}, 200
+        return {'status': 'success', 'cars': [x for x in cars if isinstance(x,dict)]}, 200
     def post(self):
         self.shelf = get_db()
         args = parser.parse(self.car_add_args,request,location="json")
         message = self.validatePostRequestArguments(args)
         if message:
-            return {"message" : message} , 400
+            return {"status": "fail", "message" : message} , 400
         car = self.buildCar(args)
         self.shelf[args["car"]] = car
         self.shelf[str(self.spot)] = args["car"]
-        return {'message': 'Success', "data": car}, 201
+        response = {'status': 'success'}
+        response.update(car)
+        return response, 201
     def validatePostRequestArguments(self,args):
-        if "car" not in args or "tariff" not in args:
-            return "Missing arguments on the request"
-        elif len(args["car"])==0 or args["car"].isdigit() or args["tariff"] not in tariffs:
-            return "Invalid arguments on the request"
+        msg = []
+        #Missing arguments test
+        if "car" not in args:
+            msg.append("missing car argument")
+        if "tariff" not in args:
+            msg.append("missing tariff argument")
+        if msg:
+            return " and ".join(msg).capitalize()
+        print(msg)
+        
+        #Correct format arguments
+        if len(args["car"])==0 or args["car"].isdigit():
+            msg.append("car argument must be a non integer non empty string")
+        if args["tariff"] not in tariffs:
+            msg.append("tariff has to be one of: " + ",".join(tariffs))
+        if msg:
+            return " and ".join(msg).capitalize()
+        
+        #Validate unique car ids
         elif args["car"] in self.shelf.keys():
             return "This car id has already been registered"
+        
+        #Validate parking lot spot availability
         self.spot = self.getSpot()
         if self.spot<0:
             return "Parking lot is full"
@@ -41,10 +60,10 @@ class CarList(Resource):
             "car": args["car"],
             "tariff": args["tariff"],
             "location": str(self.spot),
-            "start": datetime.now().isoformat()
+            "start": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
     def getSpot(self):
-        for i in range(numberofSpots):
+        for i in range(1, numberofSpots+1):
             if str(i) not in self.shelf.keys():
                 return i
         return -1
@@ -53,15 +72,17 @@ class Car(Resource):
         self.shelf = get_db()
         message = self.validateDeleteRequestArguments(identifier)
         if message:
-            return {"message" : message} , 400
-        fromd = datetime.fromisoformat(self.shelf[self.car]["start"])
+            return {"status" : "fail","message" : message} , 400
+        fromd = datetime.strptime(self.shelf[self.car]["start"],"%Y-%m-%d %H:%M:%S")
         tod = datetime.now()
         fee = calculateFee(fromd,tod,self.shelf[self.car]["tariff"])
         carobj = self.shelf[self.car]
-        carobj["finish"] = tod.isoformat()
+        carobj["finish"] = tod.strftime("%Y-%m-%d %H:%M:%S")
         del self.shelf[self.car]
         del self.shelf[self.location]
-        return {"message" : "Success","fee":fee,"car": carobj},200
+        response = {'status': 'success',"fee":fee}
+        response.update(carobj)
+        return response,200
     def validateDeleteRequestArguments(self,identifier):
         if len(identifier)==0:
             return "Missing identifier"
