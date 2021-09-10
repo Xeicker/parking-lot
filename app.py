@@ -1,7 +1,7 @@
 import os
 from flask import Flask, g
 from flask_restful import Api
-from Resources import CarList, Car
+from Resources import CarList, CarResource
 import logging
 
 app = Flask(__name__)
@@ -9,7 +9,7 @@ api = Api(app)
 
 # Define Resourses used by application
 api.add_resource(CarList, "/cars")
-api.add_resource(Car, "/cars/<string:identifier>")
+api.add_resource(CarResource, "/cars/<string:identifier>")
 
 
 # Close db when finishing request
@@ -20,17 +20,19 @@ def teardown_db(exception):
         db.close()
 
 
-# Show Readme file on root URL
 @app.route('/')
 def hello():
+    """Show Readme file on root URL"""
+
     with open("README.md", "r") as f:
         # Replace string new lines to html new lines
         text = f.read().replace("\n", "<br>")
     return text
 
 
-# Define logging characteristics
 def configure_logging():
+    """Define logging characteristics"""
+
     del app.logger.handlers[:]
 
     # Define log formats

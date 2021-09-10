@@ -1,10 +1,8 @@
 from flask_restful import Resource
-from Shelves import get_db
 from flask import request
 from ParkinLotManager import ParkingLotManager
 from webargs.flaskparser import parser
 from webargs import fields
-from datetime import datetime
 import logging
 
 
@@ -17,20 +15,11 @@ class CarList(Resource):
 
     # GET request
     def get(self):
-        shelf = get_db()
-        cars = []
-
-        # Read all items from db
-        for key in shelf.keys():
-            cars.append(shelf[key])
-
-        # return list of all items in db which are cars
-        return {'status': 'success', 'cars':
-                [x for x in cars if isinstance(x, dict)]}, 200
+        return {'status': 'success',
+                'cars': self.parking_lot_manager.get_all_cars()}, 200
 
     # POST request
     def post(self):
-        self.shelf = get_db()
 
         # Read arguments from the body of the request and validate them
         args = parser.parse(self.car_add_args, request, location="json")
@@ -45,15 +34,12 @@ class CarList(Resource):
         # Generate car info
         car = self._build_car(args)
 
-        # Save car to db
-        self.shelf[args["car"]] = car
-
-        # Associate parking spot to carId
-        self.shelf[str(self.spot)] = args["car"]
+        # Add car to db
+        self.parking_lot_manager.add_car(car)
 
         # Concat status info to car info
         response = {'status': 'success'}
-        response.update(car)
+        response.update(car.get_as_dict())
         return response, 201
 
     def _validate_add_request_arguments(self, args):
@@ -77,78 +63,54 @@ class CarList(Resource):
             return " and ".join(msg).capitalize()
 
         # Validate unique car ids
-        elif args["car"] in self.shelf.keys():
+        car = self.parking_lot_manager.get_car_by_id(args["car"])
+        if car is not None:
             return "This car id has already been registered"
 
         # Validate parking lot spot availability
-        self.spot = self._get_spot()
+        self.spot = self.parking_lot_manager.get_spot()
         if self.spot < 0:
             return "Parking lot is full"
         return ""
 
     def _build_car(self, args):
-        return {
-            "car": args["car"],
-            "tariff": args["tariff"],
-            "location": str(self.spot),
-            "start": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        }
-
-    def _get_spot(self):
-        # Find first available parking spot
-        for i in range(1, self.parking_lot_manager.parking_spots+1):
-            if str(i) not in self.shelf.keys():
-                return i
-        return -1
+        return self.parking_lot_manager.generate_new_car(
+            args["car"], args["tariff"])
 
 
-class Car(Resource):
+class CarResource(Resource):
     def __init__(self):
         self.parking_lot_manager = ParkingLotManager()
 
     # DELETE request
     def delete(self, identifier):
-        self.shelf = get_db()
-        message = self._validate_delete_request_arguments(identifier)
+        message, car = self._validate_delete_request_arguments(identifier)
 
         # Fail request if any error on identifier
         if message:
             return {"status": "fail", "message": message}, 400
 
-        # Generate info to calculate fee and calculate it
-        carobj = self.shelf[self.car]
-        fromd = datetime.strptime(carobj["start"], "%Y-%m-%d %H:%M:%S")
-        tod = datetime.now()
-        fee = self.parking_lot_manager.calculate_fee(
-            fromd, tod, carobj["tariff"])
-
-        # Extend car info
-        carobj["finish"] = tod.strftime("%Y-%m-%d %H:%M:%S")
-
         # Delete car from db
-        del self.shelf[self.car]
-        del self.shelf[self.location]
+        deletion_response = self.parking_lot_manager.delete_car(car)
 
         # Concat car info with request info
-        response = {'status': 'success', "fee": fee}
-        response.update(carobj)
+        response = {'status': 'success'}
+        response.update(deletion_response)
         return response, 200
 
     def _validate_delete_request_arguments(self, identifier):
         if len(identifier) == 0:
-            return "Missing identifier"
+            return "Missing identifier", None
         # if identifier is not parseable to integer then it is taken as car ID
         elif not identifier.isdigit():
-            if identifier not in self.shelf.keys():
-                return "Car not found"
-            self.car = identifier
-            self.location = self.shelf[identifier]["location"]
+            car = self.parking_lot_manager.get_car_by_id(identifier)
+            if car is None:
+                return "Car not found", None
         # if parseable to integer it is taken as parking spot number
         else:
+            car = self.parking_lot_manager.get_car_at_spot(identifier)
             if int(identifier) >= self.parking_lot_manager.parking_spots:
-                return "Invalid location"
-            elif identifier not in self.shelf.keys():
-                return "Location was free"
-            self.car = self.shelf[identifier]
-            self.location = identifier
-        return ""
+                return "Invalid location", None
+            elif car is None:
+                return "Location was free", None
+        return "", car
