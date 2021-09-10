@@ -6,8 +6,10 @@ numberofSpots = 10
 def basicTariff(fromd, tod, divisor,factor):
     return math.ceil((tod-fromd).total_seconds()/float(divisor))*factor
 def calculateFee(fromd, tod, tariff):
+    #Any tariff is free first 15 minutes
     if (tod-fromd).total_seconds()<=15*60:
         return 0
+        
     elif tariff in tariffs:
         return tariffs[tariff](fromd,tod)
     raise Exception("Unknown tariff")

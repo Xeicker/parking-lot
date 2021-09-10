@@ -9,21 +9,40 @@ from datetime import  datetime
 
 class CarList(Resource):
     car_add_args = {"car": fields.Str(), "tariff": fields.Str()}
+    #GET request
     def get(self):
         shelf = get_db()
         cars = []
+
+        #Read all items from db
         for key in shelf.keys():
             cars.append(shelf[key])
+
+        #return list of all items in db which are cars
         return {'status': 'success', 'cars': [x for x in cars if isinstance(x,dict)]}, 200
+    
+    #POST request
     def post(self):
         self.shelf = get_db()
+        
+        #Read arguments from the body of the request and validate them
         args = parser.parse(self.car_add_args,request,location="json")
         message = self.validatePostRequestArguments(args)
+        
+        #If any error fail the request
         if message:
             return {"status": "fail", "message" : message} , 400
+        
+        #Generate car info
         car = self.buildCar(args)
+        
+        #Save car to db
         self.shelf[args["car"]] = car
+        
+        #Associate parking spot to carId
         self.shelf[str(self.spot)] = args["car"]
+
+        #Concat status info to car info
         response = {'status': 'success'}
         response.update(car)
         return response, 201
@@ -63,23 +82,35 @@ class CarList(Resource):
             "start": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
     def getSpot(self):
+        #Find first available parking spot
         for i in range(1, numberofSpots+1):
             if str(i) not in self.shelf.keys():
                 return i
         return -1
 class Car(Resource):
+    #DELETE request
     def delete(self,identifier):
         self.shelf = get_db()
         message = self.validateDeleteRequestArguments(identifier)
+
+        #Fail request if any error on identifier
         if message:
             return {"status" : "fail","message" : message} , 400
-        fromd = datetime.strptime(self.shelf[self.car]["start"],"%Y-%m-%d %H:%M:%S")
-        tod = datetime.now()
-        fee = calculateFee(fromd,tod,self.shelf[self.car]["tariff"])
+        
+        #Generate info to calculate fee and calculate it
         carobj = self.shelf[self.car]
+        fromd = datetime.strptime(carobj["start"],"%Y-%m-%d %H:%M:%S")
+        tod = datetime.now()
+        fee = calculateFee(fromd,tod,carobj["tariff"])
+        
+        #Extend car info
         carobj["finish"] = tod.strftime("%Y-%m-%d %H:%M:%S")
+
+        #Delete car from db
         del self.shelf[self.car]
         del self.shelf[self.location]
+
+        #Concat car info with request info
         response = {'status': 'success',"fee":fee}
         response.update(carobj)
         return response,200
