@@ -3,20 +3,28 @@
 This repository contains a REST API that manages a parking lot through three basic operations: list, remove and add a parked car. It is based on Google's Cloud Run API because the hello world example contains everything to run a web API, and if publishing it is required, everything is there to do so in Google Cloud services.
 
 
-##Installation
+## Installation
 
 To obtain the latest stable code, use the master branch. For the latest working code, use the dev/Main branch. This project needs a few python modules to run, and they are listed in "requirements.txt" since is the file used to make the docker image. At this point the modules needed are:
 Flaskv2.0.1+, requestsv2.26.0+, flask-restfulv0.3.9+, webargsv8.0.1+(other version may work but these versions were tested). To run the application, run the app.py.
 
-##Use of API
+## DB structure
+
+This project doesn't use an actual database. It uses the shelve module to generate a kind of persistent dictionary. This dictionary only accepts strings as keys, but as values, it accepts almost any python object. For more information about that module, you can visit [shelve module reference](https://docs.python.org/3/library/shelve.html).
+
+There are two kinds of keys used in this project to save information. 
+ * Integer-parseable: This represents a location number in the parking lot. The value associated is a string containing a carID
+ * Non-integer-parseable: This represents a carID. The value associated is an instance of Car class
+
+## Use of API
 
 This API works through HTTP requests(if running locally, it runs on localhost:8080/). To make them, it is easy to use Postman, a desktop app where you can select the URL, headers, content, and type of request to send it. 
 
-###Add Request
+### Add Request
 
 Adds a car to the parking lot giving a car id and selecting a tariff. The server assigns a parking spot if available and saves the time when the car entered.
 
-This request is sent to http://host:port/cars(i.e. localhost:8080/cars)  using a POST request with a JSON body as follows:
+This request is sent to http://<span></span>host:port/cars(i.e. localhost:8080/cars)  using a POST request with a JSON body as follows:
 	{
 		"car":<carID>,
 		"tariff":<tariff>
@@ -39,6 +47,7 @@ This method creates a car and saves it to a persistent dictionary, and returns a
 	}
 
 For example
+
 	{"status": "success", "car": "car1", "tariff": "hourly", "location": 12, "start": "2014-10-01 14:11:45"}	
 	
 	or
@@ -51,11 +60,11 @@ Possible error messages are:
         This car id has already been registered: self-explanatory
         Parking lot is full: self-explanatory
 
-###List Request
+### List Request
 
 Lists all cars on the parking lot
 			
-This request is sent to http://host:port/cars(i.e. localhost:8080/cars)   using a GET request. This method returns a JSON file cointaining all cars in the parking lot with the format:
+This request is sent to http://<span></span>host:port/cars(i.e. localhost:8080/cars)   using a GET request. This method returns a JSON file cointaining all cars in the parking lot with the format:
 	{
 		"status" : "success",
 		"cars" :[
@@ -77,11 +86,11 @@ For example:
         {"car": "car2", "tariff": "daily", "location": 2, "start": "2014-10-01 15:23:05"}
     ] }
 
-###Remove Request
+###  Remove Request
 
 Removes a car from the parking lot and calculates the fee based on the time elapsed from the addition of the car to removing it, using the selected tariff.
 
-This request is sent to http://host:port/cars/<identifier>(i.e. localhost:8080/cars/car1) using a DELETE request. The identifier is taken as <location> if it is an integer or as <carID> otherwise. This method removes from the persistent dictionary the car with that <identifier> and returns a JSON with the format:
+This request is sent to http://<span></span>host:port/cars/<identifier>'(i.e. localhost:8080/cars/car1) using a DELETE request. The identifier is taken as <location> if it is an integer or as <carID> otherwise. This method removes from the persistent dictionary the car with that <identifier> and returns a JSON with the format:
 	{
 		"status" : ("success" | "fail")
 		<if error>
