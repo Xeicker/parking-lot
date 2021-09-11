@@ -80,6 +80,8 @@ class CarResource(Resource):
 
         # Fail request if any error on identifier
         if message:
+            self.logger.info("Bad request with args: " + str(args) +
+                             "; \nError message: " + message)
             return self._make_request_response(
                 message,
                 None,
