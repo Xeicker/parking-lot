@@ -135,8 +135,8 @@ class CarResource(Resource):
     def _validate_delete_request_arguments(self, args):
         # Missing arguments test
         if "car" not in args and "location" not in args:
-            return ("missing car argument, request needs to" +
-                    "contain either location or car argument"), None
+            return ("Request needs to contain either" +
+                    " location or car argument"), None
         # if identifier is not parseable to integer then it is taken as car ID
         if "car" in args:
             identifier = args["car"]
@@ -149,8 +149,9 @@ class CarResource(Resource):
         else:
             identifier = str(args["location"])
             car = self.parking_lot_manager.get_car_at_spot(identifier)
-            if int(identifier) >= self.parking_lot_manager.parking_spots:
-                return "Invalid location", None
+            if int(identifier) > self.parking_lot_manager.parking_spots:
+                return "Invalid location, must be less or equal to: "\
+                    + str(self.parking_lot_manager.parking_spots), None
             elif car is None:
                 return "Location was free", None
         return "", car
