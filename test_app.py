@@ -1,4 +1,4 @@
-from ParkinLotManager import ParkingLotManager
+from parking_lot import ParkingLotManager
 from datetime import datetime
 import configparser
 

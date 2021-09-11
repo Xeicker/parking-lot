@@ -1,7 +1,7 @@
 from datetime import datetime
 import math
 import configparser
-from Shelves import Shelves, Car
+from shelves import Shelves, Car
 
 
 class ParkingLotManager():

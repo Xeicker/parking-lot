@@ -1,7 +1,7 @@
 import os
 from flask import Flask, g
 from flask_restful import Api
-from Resources import CarResource
+from resources import CarResource
 import logging
 
 app = Flask(__name__)

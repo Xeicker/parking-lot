@@ -1,6 +1,6 @@
 from flask_restful import Resource
 from flask import request
-from ParkinLotManager import ParkingLotManager
+from parking_lot import ParkingLotManager
 from webargs.flaskparser import parser
 from webargs import fields
 import logging
