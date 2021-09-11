@@ -6,30 +6,60 @@ from webargs import fields
 import logging
 
 
-class CarList(Resource):
-    car_add_args = {"car": fields.Str(), "tariff": fields.Str()}
+class CarResource(Resource):
+    # Needed argumetns for car addition an deletion
+    _car_add_args = {"car": fields.Str(), "tariff": fields.Str()}
+    _car_delete_args = {"car": fields.Str(), "location": fields.Integer()}
+
+    # Logger to use for any logging functionality
     logger = logging.getLogger("CarList")
+
+    # Status strings
+    _success_string = "success"
+    _fail_string = "fail"
+
+    # Http response codes
+    _succesful_listing_code = 200
+    _bad_request_code = 400
+    _succesful_car_addition_code = 201
+    _succesful_car_deletion_code = 200
 
     def __init__(self):
         self.parking_lot_manager = ParkingLotManager()
 
+    def _make_request_response(self, message, info, response_code):
+        response = {
+            "status": self._fail_string if message else self._success_string}
+        # Message key only appears when any error occurs
+        if message:
+            response["message"] = message
+            return response, response_code
+        # Concat response with additional information needed
+        response.update(info)
+        return response, response_code
+
     # GET request
     def get(self):
-        return {'status': 'success',
-                'cars': self.parking_lot_manager.get_all_cars()}, 200
+        return self._make_request_response(
+            "",
+            {"cars": self.parking_lot_manager.get_all_cars()},
+            self._succesful_listing_code)
 
     # POST request
     def post(self):
 
         # Read arguments from the body of the request and validate them
-        args = parser.parse(self.car_add_args, request, location="json")
+        args = parser.parse(self._car_add_args, request, location="json")
         message = self._validate_add_request_arguments(args)
 
         # If any error fail the request
         if message:
             self.logger.info("Bad request with args: " + str(args) +
                              "; \nError message: " + message)
-            return {"status": "fail", "message": message}, 400
+            return self._make_request_response(
+                message,
+                None,
+                self._bad_request_code)
 
         # Generate car info
         car = self._build_car(args)
@@ -37,10 +67,34 @@ class CarList(Resource):
         # Add car to db
         self.parking_lot_manager.add_car(car)
 
-        # Concat status info to car info
+        return self._make_request_response(
+            "",
+            car.get_as_dict(),
+            self._succesful_car_addition_code)
+
+    # DELETE request
+    def delete(self):
+
+        args = parser.parse(self._car_delete_args, request, location="json")
+        message, car = self._validate_delete_request_arguments(args)
+
+        # Fail request if any error on identifier
+        if message:
+            return self._make_request_response(
+                message,
+                None,
+                self._bad_request_code)
+
+        # Delete car from db
+        deletion_response = self.parking_lot_manager.delete_car(car)
+
+        # Concat car info with request info
         response = {'status': 'success'}
-        response.update(car.get_as_dict())
-        return response, 201
+        response.update(deletion_response)
+        return self._make_request_response(
+            "",
+            deletion_response,
+            self._succesful_car_deletion_code)
 
     def _validate_add_request_arguments(self, args):
         msg = []
@@ -51,7 +105,6 @@ class CarList(Resource):
             msg.append("missing tariff argument")
         if msg:
             return " and ".join(msg).capitalize()
-        print(msg)
 
         # Correct format arguments
         if len(args["car"]) == 0 or args["car"].isdigit():
@@ -77,37 +130,22 @@ class CarList(Resource):
         return self.parking_lot_manager.generate_new_car(
             args["car"], args["tariff"])
 
-
-class CarResource(Resource):
-    def __init__(self):
-        self.parking_lot_manager = ParkingLotManager()
-
-    # DELETE request
-    def delete(self, identifier):
-        message, car = self._validate_delete_request_arguments(identifier)
-
-        # Fail request if any error on identifier
-        if message:
-            return {"status": "fail", "message": message}, 400
-
-        # Delete car from db
-        deletion_response = self.parking_lot_manager.delete_car(car)
-
-        # Concat car info with request info
-        response = {'status': 'success'}
-        response.update(deletion_response)
-        return response, 200
-
-    def _validate_delete_request_arguments(self, identifier):
-        if len(identifier) == 0:
-            return "Missing identifier", None
+    def _validate_delete_request_arguments(self, args):
+        # Missing arguments test
+        if "car" not in args and "location" not in args:
+            return ("missing car argument, request needs to" +
+                    "contain either location or car argument"), None
         # if identifier is not parseable to integer then it is taken as car ID
-        elif not identifier.isdigit():
+        if "car" in args:
+            identifier = args["car"]
+            if identifier.isdigit():
+                return "car argument must be non-integer", None
             car = self.parking_lot_manager.get_car_by_id(identifier)
             if car is None:
-                return "Car not found", None
+                return "car not found", None
         # if parseable to integer it is taken as parking spot number
         else:
+            identifier = str(args["location"])
             car = self.parking_lot_manager.get_car_at_spot(identifier)
             if int(identifier) >= self.parking_lot_manager.parking_spots:
                 return "Invalid location", None
