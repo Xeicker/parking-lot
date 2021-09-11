@@ -1,15 +1,14 @@
 import os
 from flask import Flask, g
 from flask_restful import Api
-from Resources import CarList, CarResource
+from Resources import CarResource
 import logging
 
 app = Flask(__name__)
 api = Api(app)
 
 # Define Resourses used by application
-api.add_resource(CarList, "/cars")
-api.add_resource(CarResource, "/cars/<string:identifier>")
+api.add_resource(CarResource, "/cars")
 
 
 # Close db when finishing request
@@ -52,8 +51,8 @@ def configure_logging():
     # Set handlers to all loggers
     app.logger.addHandler(info_handler)
     app.logger.setLevel(logging.INFO)
-    CarList.logger.addHandler(info_handler)
-    CarList.logger.setLevel(logging.INFO)
+    CarResource.logger.addHandler(info_handler)
+    CarResource.logger.setLevel(logging.INFO)
     pass
 
 
