@@ -8,15 +8,18 @@ class ParkingLotManager():
     tariffs = {}
     parking_spots = -1
 
-    def __init__(self):
+    def __init__(self, testing=False):
         self.parser = configparser.ConfigParser(allow_no_value=True)
         self._load_configurations()
-        self.shelf = Shelves.get_db()
+        if not testing:
+            self.shelf = Shelves.get_db()
 
     def _basic_tariff(self, fromd, tod, divisor, factor):
         """Calculates a fee depending on time (seconds/divisor)
         multiplied by a cost per unit time(factor)"""
-        return math.ceil((tod-fromd).total_seconds()/float(divisor))*factor
+        print(divisor, factor, fromd, tod)
+        return math.ceil((tod-fromd).total_seconds()
+                         / float(divisor))*float(factor)
 
     def _load_configurations(self):
         self.parser.read("parkinglot.ini")
@@ -26,11 +29,17 @@ class ParkingLotManager():
                 for tariff in self.parser[tariff_type]:
                     tariff_details = \
                         self.parser[tariff]
-                    self.tariffs[tariff] = lambda fromd, tod:\
+                    seconds = tariff_details["seconds"]
+                    cost = tariff_details["cost"]
+                    self.tariffs[tariff] = lambda \
+                        fromd,\
+                        tod,\
+                        divisor = seconds,\
+                        factor = cost:\
                         self._basic_tariff(fromd,
                                            tod,
-                                           tariff_details["seconds"],
-                                           tariff_details["cost"])
+                                           divisor,
+                                           factor)
         # Load number of available spots in parking lot
         self.parking_spots = \
             int(self.parser["General_Config"]["parking_spots"])
