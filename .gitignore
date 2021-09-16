@@ -1,3 +1,6 @@
 /.vscode
 /.pytest_cache
 *.pyc
+*.db
+/__pycache__
+*.log
